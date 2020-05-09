@@ -1,10 +1,15 @@
 package com.example.myapplication;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Bundle;
 
+import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,12 +17,17 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.LocationManager;
+import android.widget.Toast;
+
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -64,6 +74,21 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // -------------------------------GPS
+        if(!checkLocationServicesStatus()){
+            showDialogForLocationServiceSetting();
+        }
+        else{
+            checkRunTimePermission();
+        }
+        gpsTracker = new GpsTracker(MainActivity.this);
+        double latitude = gpsTracker.getLatitude(); //위도 가져옴
+        double longitude = gpsTracker.getLongitude(); //경도 가져옴
+        Log.d("위도", Double.toString(latitude));
+        Log.d("위도", Double.toString(longitude));
+        //----------------------------------
+
+
         temperatureView=(TextView)findViewById(R.id.mission1_temperature);
         upView=(TextView)findViewById(R.id.mission1_up_text);
         downView=(TextView)findViewById(R.id.mission1_down_text);
@@ -80,10 +105,10 @@ public class MainActivity extends AppCompatActivity {
 
         queue= Volley.newRequestQueue(this);
 
-        StringRequest currentRequest=new StringRequest(Request.Method.POST, "http://api.openweathermap.org/data/2.5/weather?q=busan&mode=xml&units=metric&appid=018efd0cb973e7486e988b05eda9a125", new Response.Listener<String>(){
-            @Override
-            public void onResponse(String response) {
-                parseXMLCurrent(response);
+        StringRequest currentRequest=new StringRequest(Request.Method.POST, "http://api.openweathermap.org/data/2.5/weather?lat="+Double.toString(latitude)+"&lon="+Double.toString(longitude)+"&mode=xml&units=metric&appid=018efd0cb973e7486e988b05eda9a125", new Response.Listener<String>(){
+                    @Override
+                    public void onResponse(String response) {
+                        parseXMLCurrent(response);
             }
         }, new Response.ErrorListener(){
             @Override
@@ -92,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        StringRequest forecastRequest=new StringRequest(Request.Method.POST, "http://api.openweathermap.org/data/2.5/forecast/?q=seoul&mode=xml&units=metric&appid=018efd0cb973e7486e988b05eda9a125", new Response.Listener<String>() {
+        StringRequest forecastRequest=new StringRequest(Request.Method.POST, "http://api.openweathermap.org/data/2.5/forecast/?lat="+Double.toString(latitude)+"&lon="+Double.toString(longitude)+"&mode=xml&units=metric&appid=018efd0cb973e7486e988b05eda9a125", new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 parseXMLForecast(response);
@@ -177,6 +202,8 @@ public class MainActivity extends AppCompatActivity {
             doc.getDocumentElement().normalize();
 
             Element tempElement=(Element)(doc.getElementsByTagName("temperature").item(0));
+
+
             String temperature=tempElement.getAttribute("value");
             String min=tempElement.getAttribute("min");
             String max=tempElement.getAttribute("max");
@@ -253,4 +280,85 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
+
+    //GPS 관련 함수들 --------------------------------------
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults){
+        //requestCode가 PERMISSIONS_REQUEST_CODE 이고, permission 개수만큼 수신되었다면
+        if(requestCode == PERMISSIONS_REQUEST_CODE && grantResults.length == REQUIRED_PERMISSIONS.length){
+            boolean check_result = true; //permission check를 위한 변수
+
+            for(int result : grantResults){
+                if(result != PackageManager.PERMISSION_GRANTED){
+                    check_result = false;
+                    break;
+                }
+            }
+
+            if(check_result){} // 성공
+            else{ // 실패
+                if(ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0]) || ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[1])){
+                    Toast.makeText(MainActivity.this, "권한이 거부되었습니다. 앱을 다시 실행하여 권한을 허용해주세요.", Toast.LENGTH_LONG).show();
+                    finish();
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "권한이 거부되었습니다. 설정->앱에서 권한을 허용해야 함니다.", Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+    }
+
+    private void checkRunTimePermission() {
+        //실행중 허가
+
+        //check
+        int hasFineLocationPermission = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION);
+        int hasCoarseLocationPermission = ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION);
+
+        if(hasFineLocationPermission == PackageManager.PERMISSION_GRANTED && hasCoarseLocationPermission == PackageManager.PERMISSION_GRANTED){
+            //Permission 가지고 있다
+        }
+        else{
+            //permission 거부한적 있음
+            if(ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, REQUIRED_PERMISSIONS[0])){
+                Toast.makeText(MainActivity.this, "이 앱을 실행하려면 위치 접근 권한이 필요합니다.", Toast.LENGTH_LONG).show();
+                ActivityCompat.requestPermissions(MainActivity.this, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
+            }
+            else{//거부한적 없음
+                ActivityCompat.requestPermissions(MainActivity.this, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
+            }
+        }
+    }
+
+
+    //gps활성화
+    private void showDialogForLocationServiceSetting(){
+        AlertDialog.Builder builer = new AlertDialog.Builder(MainActivity.this);
+        builer.setTitle("위치 서비스 비활성화");
+        builer.setMessage("앱을 사용하기 위해서는 위치 서비스가 필요합니다.\n" + "위치 설정을 수정하시겠습니까?");
+        builer.setCancelable(true);
+        builer.setPositiveButton("설정", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int id) {
+                Intent callGPSSettingIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                startActivityForResult(callGPSSettingIntent, GPS_ENABLE_REQUEST_CODE);
+            }
+        });
+        builer.setNegativeButton("취소", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+        builer.create().show();
+    }
+
+    public boolean checkLocationServicesStatus(){
+        LocationManager locationManager = (LocationManager)getSystemService(LOCATION_SERVICE);
+
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    }
+
+
 }

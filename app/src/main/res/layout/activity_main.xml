@@ -6,6 +6,22 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg">
 
+    <com.jetradarmobile.snowfall.SnowfallView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:snowflakeAlphaMax="255"
+        app:snowflakeAlphaMin="150"
+        app:snowflakeAngleMax="5"
+        app:snowflakeImage="@drawable/snow"
+        app:snowflakesAlreadyFalling="false"
+        app:snowflakesFadingEnabled="true"
+        app:snowflakeSizeMax="32dp"
+        app:snowflakeSizeMin="8dp"
+        app:snowflakeSpeedMax="12"
+        app:snowflakeSpeedMin="4"
+        app:snowflakesNum="250"
+        ></com.jetradarmobile.snowfall.SnowfallView>
+
     <com.android.volley.toolbox.NetworkImageView
         android:id="@+id/mission1_symbol"
         android:layout_width="100dp"
@@ -53,9 +69,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textColor="@android:color/black"
-        android:textSize="80dp"
+        android:textSize="40dp"
         android:layout_below="@id/mission1_up_image"
-        android:layout_marginLeft="24dp"/>
+        android:layout_marginLeft="36dp"/>
 
     <ImageView
         android:id="@+id/mission1_fahrenheit"
